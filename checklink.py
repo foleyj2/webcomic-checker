@@ -24,17 +24,21 @@ class checklink():
         websiteinfo = urlparse(address)
         self.scheme = websiteinfo.scheme
         self.netloc = websiteinfo.netloc
-
-    def check(self,address):
-        "see if a URL is live or not"        
+    def fullurl(self,address):
+        """Return a full URL if it is just a relative link"""
         urlinfo = urlparse(address)
         #print(urlinfo)           
         if urlinfo.netloc is '':## grab from website
             urlinfo = urlinfo._replace(scheme = self.scheme)
             urlinfo = urlinfo._replace(netloc = self.netloc)
-        #print(urlinfo)
+            #print(urlinfo)
         address = urlunparse(urlinfo)
         #print(address)
+        return(address)
+
+    def check(self,address):
+        "see if a URL is live or not"
+        address=self.fullurl(address)
         if address in self.LIVE:
             return True
         if address in self.DEAD:
@@ -44,7 +48,7 @@ class checklink():
             r = requests.get(address, timeout=self.timeout)
             self.LIVE[address] = time.gmtime()
             return True
-        except requests.Timeout:
+        except requests.exceptions.RequestException:
             self.DEAD[address] = time.gmtime()
             return False
             

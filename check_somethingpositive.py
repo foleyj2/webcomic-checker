@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+import decimal
 import sys
 import os.path
 import datetime
@@ -48,6 +49,8 @@ class sparchives():
         logger.warn("Top level archive URL: %s" % address)
         self.hrefs=get_hrefs(address)
         logger.info("Links on archive page: %s" % self.hrefs)
+        self.numpages = len(self.hrefs)
+        logger.warning("Number of pages to check: %d" % self.numpages)
         website = 'https://somethingpositive.net'
         self.checker.setWebsite(website)
         logger.info("Setting base URL for relative links to %s" % website)
@@ -55,26 +58,30 @@ class sparchives():
     def checkpages(self,numpages=None):
         logger = self.logger
         comicpages = [self.checker.fullurl(comicref) for comicref in self.hrefs]
-        pagecount = 0
+        pagecount = 1
+        if numpages:
+            logger.warning(f"OVERRIDE:  Checking only {numpages} comicpages.")
         for comicpage in comicpages:
-            logger.info("checking page: %s" % comicpage)
+            logger.info(f"checking page: {comicpage}")
             pagehrefs = get_hrefs(comicpage)
-            logger.debug("contains links: %s" % pagehrefs)
+            logger.debug(f"contains links: {pagehrefs}")
             for link in pagehrefs:
                 live = self.checker.check(link)
-                if live: logger.debug("%s is LIVE" % link)
-                else: logger.warning("comicpage %s contains %s which is DEAD" % (comicpage, link))
-            print(".", end="",flush=True)
+                if live: logger.debug(f"{link} is LIVE")
+                else: logger.warning(f"comicpage {comicpage} contains {link} which is DEAD")
+            progress = decimal.Decimal(pagecount/float(self.numpages))*100
+            print(f"{pagecount}/{self.numpages} = {progress:{4}.{3}}%", end="\r",flush=True)
             pagecount += 1
-            if numpages and pagecount >= numpages:
+            if numpages and pagecount > numpages:
+                print()
                 break
         
         
 if __name__=="__main__":
     parser = argparse.ArgumentParser(description="Check SomethingPositive links")
     parser.add_argument('website', help='SP archive website or page')
-    parser.add_argument('--comicpage', help='address for page, not archive')
-    parser.add_argument('--numpages', type=int, default=5, help='number of pages to check')
+    parser.add_argument('--comicpage', action='store_true', help='address for page, not archive')
+    parser.add_argument('--numpages', type=int, default=None, help='number of pages to check')
     args = parser.parse_args()    
     SPA = sparchives(args.website)
     SPA.checkpages(args.numpages)

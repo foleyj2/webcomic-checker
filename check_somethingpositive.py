@@ -20,16 +20,6 @@ if __name__ == '__main__':
 SCRIPTPATH = os.path.dirname(os.path.realpath(__file__))
 
 
-def get_hrefs(address,prefix='sp'):
-    r = requests.get(address)
-    soup = BeautifulSoup(r.text, 'html.parser')
-    retval = []
-    #print(soup.prettify())
-    for link in soup.find_all('a'):
-        linkhref = link.get('href')
-        if linkhref.startswith(prefix) and linkhref.endswith('.shtml'):
-            retval.append(linkhref)
-    return retval
     
 class sparchives():
     checker = checklink.checklink(timeout=2.0)
@@ -47,13 +37,28 @@ class sparchives():
 
         self.address=address
         logger.warn("Top level archive URL: %s" % address)
-        self.hrefs=get_hrefs(address)
+        self.hrefs=self.get_hrefs(address)
         logger.info("Links on archive page: %s" % self.hrefs)
         self.numpages = len(self.hrefs)
         logger.warning("Number of pages to check: %d" % self.numpages)
         website = 'https://somethingpositive.net'
         self.checker.setWebsite(website)
         logger.info("Setting base URL for relative links to %s" % website)
+
+    def get_hrefs(self,address,prefix='sp'):
+        """Grab a page, parse it, and rip out the right hrefs"""
+        r = requests.get(address)
+        soup = BeautifulSoup(r.text, 'html.parser')
+        retval = []
+        #print(soup.prettify())
+        for link in soup.find_all('a'):
+            linkhref = link.get('href')
+            if linkhref is None:
+                self.logger.error(f"comicpage {address} has a broken HREF: {link}.")                
+            elif linkhref.startswith(prefix) and linkhref.endswith('.shtml'):
+                retval.append(linkhref)
+        return retval
+
 
     def checkpages(self,numpages=None):
         logger = self.logger
@@ -63,7 +68,7 @@ class sparchives():
             logger.warning(f"OVERRIDE:  Checking only {numpages} comicpages.")
         for comicpage in comicpages:
             logger.info(f"checking page: {comicpage}")
-            pagehrefs = get_hrefs(comicpage)
+            pagehrefs = self.get_hrefs(comicpage)
             logger.debug(f"contains links: {pagehrefs}")
             for link in pagehrefs:
                 live = self.checker.check(link)

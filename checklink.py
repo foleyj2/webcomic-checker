@@ -1,5 +1,10 @@
 #!/usr/bin/python3
-"""Simple class for checking if a URL exists or not and remembering for later"""
+"""Class to check if a URL is live or not
+Caches results to speed up processing.
+By Joseph T. Foley <foley AT RU.IS>  
+Created 2020-05-02
+MIT License
+"""
 import argparse
 import requests
 import time

@@ -1,3 +1,5 @@
+# From GitHub Gist hackerdem/check_link.py
+# https://gist.github.com/hackerdem/2872d7f994d192188970408980267e6e
 from bs4 import BeautifulSoup,SoupStrainer
 import urllib.request
 import colorama,re,queue,threading

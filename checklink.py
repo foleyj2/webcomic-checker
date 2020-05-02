@@ -46,12 +46,13 @@ class checklink():
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser(description="Check Web links")
-    parser.add_argument('address', help='URL to check')
+    parser.add_argument('address', nargs='+', help='URL to check')
     parser.add_argument('--timeout', type=float, default=1.0, help='Time to wait for response')
     parser.add_argument('--website', help='Force website for relative links')
     args = parser.parse_args()
     CL = checklink(args.timeout)
     if args.website:
         CL.setWebsite(args.website)
-    print(CL.check(args.address))
+    for address in args.address:
+        print(CL.check(address))
     

@@ -130,3 +130,7 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+/checklink.db
+*.zi
+*.zip
+/sp-summary.txt

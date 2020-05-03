@@ -47,10 +47,10 @@ class checklink():
         #print("checking %s" % address)
         try:
             r = requests.get(address, timeout=self.timeout)
-            self.LIVE[address] = time.gmtime()
+            self.LIVE[address] = round(time.time())
             return True
         except requests.exceptions.RequestException:
-            self.DEAD[address] = time.gmtime()
+            self.DEAD[address] = round(time.time())
             return False
             
 

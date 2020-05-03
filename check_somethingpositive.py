@@ -24,7 +24,7 @@ SCRIPTPATH = os.path.dirname(os.path.realpath(__file__))
 class sparchives():
     checker = checklink.checklink(timeout=2.0)
     logger = logging.getLogger("app")
-    def __init__(self,address):
+    def __init__(self,address,single_comicpage=False):
         logger = self.logger        
         logger.setLevel(logging.DEBUG)
         dt = datetime.datetime.today()
@@ -35,15 +35,17 @@ class sparchives():
         logger.addHandler(console_handler)
         logger.info("Logging to %s", logpath)
 
-        self.address=address
-        logger.warn("Top level archive URL: %s" % address)
-        self.hrefs=self.get_hrefs(address)
-        logger.info("Links on archive page: %s" % self.hrefs)
-        self.numpages = len(self.hrefs)
-        logger.warning("Number of pages to check: %d" % self.numpages)
         website = 'https://somethingpositive.net'
         self.checker.setWebsite(website)
         logger.info("Setting base URL for relative links to %s" % website)
+
+        self.address=address
+        logger.warn("Top level URL: %s" % address)
+        if not single_comicpage:
+            self.hrefs=self.get_hrefs(address)
+            logger.info("Links on archive page: %s" % self.hrefs)
+            self.numpages = len(self.hrefs)
+            logger.warning("Number of pages to check: %d" % self.numpages)
 
     def get_hrefs(self,address,prefix='sp'):
         """Grab a page, parse it, and rip out the right hrefs"""
@@ -51,18 +53,34 @@ class sparchives():
         soup = BeautifulSoup(r.text, 'html.parser')
         retval = []
         #print(soup.prettify())
+        #next_link = soup.findAll('a',href=True,text='Previous<br>Comic')
+        #print(next_link)
         for link in soup.find_all('a'):
             linkhref = link.get('href')
+            linktext = link.text
+            #print (f"link:  {linkhref} which has text '{linktext}'")
+            if linktext.lower() == 'previouscomic':
+                if self.checker.fullurl(linkhref) == address:
+                    self.logger.error(f"LOOP: comicpage {address} link to previous comic is same comic")
+            if linktext.lower() == 'nextcomic':
+                if self.checker.fullurl(linkhref) == address:
+                    self.logger.error(f"LOOP: comicpage {address} link to next comic is same comic")
             if linkhref is None:
                 self.logger.error(f"comicpage {address} has a broken HREF: {link}.")                
-            elif linkhref.startswith(prefix) and linkhref.endswith('.shtml'):
+            #elif linkhref.startswith(prefix) and linkhref.endswith('.shtml'):
+            else:
                 retval.append(linkhref)
         return retval
 
 
-    def checkpages(self,numpages=None):
+    def checkpages(self,numpages=None,single_comicpage=False):
         logger = self.logger
-        comicpages = [self.checker.fullurl(comicref) for comicref in self.hrefs]
+        comicpages = []
+        if single_comicpage:
+            comicpages = [self.checker.fullurl(self.address)]  ## we were given the comicpage
+
+        else:
+            comicpages = [self.checker.fullurl(comicref) for comicref in self.hrefs]
         pagecount = 1
         if numpages:
             logger.warning(f"OVERRIDE:  Checking only {numpages} comicpages.")
@@ -70,6 +88,10 @@ class sparchives():
             logger.info(f"checking page: {comicpage}")
             pagehrefs = self.get_hrefs(comicpage)
             logger.debug(f"contains links: {pagehrefs}")
+            if single_comicpage:
+                self.numpages = len(pagehrefs)
+                logger.warning("Number of links to check: %d" % self.numpages)
+
             for link in pagehrefs:
                 live = self.checker.check(link)
                 if live: logger.debug(f"{link} is LIVE")
@@ -84,10 +106,10 @@ class sparchives():
         
 if __name__=="__main__":
     parser = argparse.ArgumentParser(description="Check SomethingPositive links")
-    parser.add_argument('website', help='SP archive website or page')
+    parser.add_argument('website', help='SP archive or comicpage')
     parser.add_argument('--comicpage', action='store_true', help='address for page, not archive')
     parser.add_argument('--numpages', type=int, default=None, help='number of pages to check')
     args = parser.parse_args()    
-    SPA = sparchives(args.website)
-    SPA.checkpages(args.numpages)
+    SPA = sparchives(args.website,single_comicpage=args.comicpage)
+    SPA.checkpages(args.numpages,single_comicpage=args.comicpage)
     SPA.logger.warning("Processing complete")

@@ -26,6 +26,7 @@ class checklink():
         self.netloc = websiteinfo.netloc
     def fullurl(self,address):
         """Return a full URL if it is just a relative link"""
+        #print(f"fullurl: {address}")
         urlinfo = urlparse(address)
         #print(urlinfo)           
         if urlinfo.netloc is '':## grab from website

@@ -6,8 +6,11 @@ import datetime
 import argparse
 import requests
 from bs4 import BeautifulSoup
-import checklink
 import logging
+from urllib.parse import urlparse,urlunparse
+
+import checklink
+
 
 if __name__ == '__main__':
     # http://stackoverflow.com/questions/8299270/ultimate-answer-to-relative-python-imports
@@ -25,18 +28,25 @@ class sparchives():
     checker = checklink.checklink(timeout=2.0)
     logger = logging.getLogger("app")
     def __init__(self,address,single_comicpage=False):
+        website = 'https://somethingpositive.net'
+        self.checker.setWebsite(website)
+
         logger = self.logger        
         logger.setLevel(logging.DEBUG)
         dt = datetime.datetime.today()
-        logpath = "sp-check-%s.log" % dt.strftime("%Y%m%d-%H%M%S")
+        timestamp = dt.strftime("%Y%m%d-%H%M%S")
+        urlpath = urlparse(address).path
+        # now remove anything we don't need
+        pagename = os.path.basename(urlpath)
+        rootname = os.path.splitext(pagename)[0]
+        
+        logpath = f"check-{rootname}-{timestamp}.log"
         logger.addHandler(logging.FileHandler(logpath))
         console_handler = logging.StreamHandler(sys.stderr)
         console_handler.setLevel(logging.WARNING)
         logger.addHandler(console_handler)
-        logger.info("Logging to %s", logpath)
+        logger.warning("Logging to %s", logpath)
 
-        website = 'https://somethingpositive.net'
-        self.checker.setWebsite(website)
         logger.info("Setting base URL for relative links to %s" % website)
 
         self.address=address
@@ -48,7 +58,7 @@ class sparchives():
             logger.warning("Number of pages to check: %d" % self.numpages)
 
     def get_hrefs(self,address,prefix='sp'):
-        """Grab a page, parse it, and rip out the right hrefs"""
+        """Grab a page, parse it, and rip out the right hrefs. OH, and check somethings"""
         r = requests.get(address)
         soup = BeautifulSoup(r.text, 'html.parser')
         retval = []
@@ -61,14 +71,13 @@ class sparchives():
             #print (f"link:  {linkhref} which has text '{linktext}'")
             if linktext.lower() == 'previouscomic':
                 if self.checker.fullurl(linkhref) == address:
-                    self.logger.error(f"LOOP: comicpage {address} link to previous comic is same comic")
+                    self.logger.error(f"ERROR: comicpage {address} link to previous comic is current comic")
             if linktext.lower() == 'nextcomic':
                 if self.checker.fullurl(linkhref) == address:
-                    self.logger.error(f"LOOP: comicpage {address} link to next comic is same comic")
+                    self.logger.error(f"ERROR: comicpage {address} link to next comic is current comic")
             if linkhref is None:
-                self.logger.error(f"comicpage {address} has a broken HREF: {link}.")                
-            #elif linkhref.startswith(prefix) and linkhref.endswith('.shtml'):
-            else:
+                self.logger.error(f"ERROR: comicpage {address} has a broken HREF: {link}.")                
+            elif linkhref.startswith(prefix) and linkhref.endswith('.shtml'):
                 retval.append(linkhref)
         return retval
 
@@ -95,7 +104,7 @@ class sparchives():
             for link in pagehrefs:
                 live = self.checker.check(link)
                 if live: logger.debug(f"{link} is LIVE")
-                else: logger.warning(f"comicpage {comicpage} contains {link} which is DEAD")
+                else: logger.warning(f"ERROR: comicpage {comicpage} contains {link} which is DEAD")
             progress = decimal.Decimal(pagecount/float(self.numpages))*100
             print(f"{pagecount}/{self.numpages} = {progress:{4}.{3}}%", end="\r",flush=True)
             pagecount += 1
